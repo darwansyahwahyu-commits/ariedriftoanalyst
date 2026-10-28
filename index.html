@@ -1,0 +1,67 @@
+var GH={"Campur semua gaya":"gunakan 5 pola berbeda","Memancing penasaran":"buat celah informasi, jangan bocorkan jawabannya","Angka & daftar":"pakai angka spesifik, mis. 5 hal atau 3 tempat","Pertanyaan":"ajukan pertanyaan yang ingin dijawab penonton","Kontras & mengejutkan":"adu ekspektasi dengan kenyataan","Rahasia & tersembunyi":"ungkap hal yang jarang diketahui orang","Peringatan & kesalahan":"sebut kesalahan umum yang perlu dihindari","Tantangan & percobaan":"coba sesuatu dan tanyakan hasilnya","Hemat & murah":"tonjolkan harga atau penghematan yang nyata","Cerita pribadi":"sudut pandang orang pertama, momen tak terduga","Urgensi & FOMO":"tonjolkan waktu atau kesempatan terbatas yang benar adanya","Perbandingan (vs)":"bandingkan dua pilihan","Tutorial & cara":"cara melakukan sesuatu dengan langkah mudah","Informatif":"jelas dan langsung ke manfaat atau isi","Santai":"bahasa sehari-hari yang akrab"};
+var FB={"Memancing penasaran":function(T){return T+": Yang Jarang Orang Tahu"},"Angka & daftar":function(T){return "5 Hal tentang "+T+" yang Wajib Tahu"},"Pertanyaan":function(T){return "Kenapa "+T+" Bikin Penasaran?"},"Kontras & mengejutkan":function(T){return T+": Kenyataannya Beda dari Bayangan"},"Rahasia & tersembunyi":function(T){return "Rahasia di Balik "+T},"Peringatan & kesalahan":function(T){return "Jangan Salah Soal "+T},"Tantangan & percobaan":function(T){return "Aku Coba "+T+", Hasilnya?"},"Hemat & murah":function(T){return T+" Hemat, Ini Hitungannya"},"Cerita pribadi":function(T){return "Pengalamanku dengan "+T},"Urgensi & FOMO":function(T){return "Sebelum Terlewat: "+T},"Perbandingan (vs)":function(T){return T+": Mana yang Lebih Baik?"},"Tutorial & cara":function(T){return "Cara Mudah "+T},"Informatif":function(T){return "Panduan Singkat "+T},"Santai":function(T){return "Cerita Seru Soal "+T}};
+var D=null;
+async function go(){
+  var T=$("tp").value.trim();if(!T){$("st").textContent="Isi topik dulu.";return}
+  $("go").disabled=true;$("st").textContent="Membuat rekomendasi…";
+  var fm=$("fm").value,bh=$("bh").value,gy=$("gy").value,d=null;
+  if(sm){
+    var p="Kamu ahli YouTube SEO. Topik video: "+T+". Format: "+fm+". Bahasa output: "+bh+". Gaya judul: "+gy+" ("+(GH[gy]||"")+").\n"+
+    "Balas HANYA JSON valid tanpa teks lain dengan bentuk: {\"titles\":[{\"t\":\"judul\",\"score\":1-10,\"why\":\"alasan singkat\"}],\"description\":\"teks\",\"hashtags\":[\"#tag\"]}.\n"+
+    "Aturan: (1) 5 judul: jika gaya adalah Campur semua gaya, buat 5 pola berbeda (pertanyaan, angka, kontras, janji, cerita); selain itu semua judul mengikuti gaya yang dipilih dengan variasi kata. Maksimal 60 karakter, kata kunci utama di awal, memancing penasaran tetapi jujur dan sesuai topik, tanpa clickbait menyesatkan. (2) score = perkiraan potensi klik dan relevansi pencarian, bulat 1-10. (3) description maksimal 600 karakter: dua kalimat pembuka yang memuat kata kunci, ringkasan singkat, ajakan subscribe. (4) 6-8 hashtag relevan"+(fm=="YouTube Shorts"?", sertakan #Shorts":"")+", hindari hashtag menyesatkan. (5) Tambahkan field thumbs: 3 ide thumbnail berbentuk array objek dengan kunci text (maksimal 5 kata huruf kapital, memancing penasaran dan sesuai isi), visual (ide gambar singkat), color (warna teks yang kontras).";
+    try{
+      var r=await sm(p,{modelTier:"default"}),x=r.text.replace(/```json|```/g,"");
+      d=JSON.parse(x.slice(x.indexOf("{"),x.lastIndexOf("}")+1));
+      if(!d.titles||!d.titles.length)d=null;
+    }catch(e){d=null}
+  }
+  if(!d){
+    var h="#"+T.replace(/[^\p{L}\p{N}]+/gu,"");
+    d={fallback:true,titles:[(FB[gy]?FB[gy](T):T+": Fakta yang Jarang Diketahui"),
+      "Kenapa "+T+" Bikin Penasaran?","5 Hal tentang "+T+" yang Wajib Kamu Tahu","Jangan Skip! "+T+" dalam 60 Detik","Ternyata "+T+" Seperti Ini"].map(function(t){return{t:t,why:"Contoh pola judul"}}),
+      description:"Di video ini kita membahas "+T+". Tonton sampai habis dan subscribe untuk konten berikutnya.",
+      hashtags:[h,"#Shorts","#Viral","#Rekomendasi"],thumbs:[{text:T,visual:"Foto terbaik dari videomu, dekat dan terang",color:"Kuning"},{text:"JANGAN SKIP!",visual:"Ekspresi takjub di depan pemandangan utama",color:"Putih"}]};
+  }
+  D=d;render();$("go").disabled=false;
+  $("st").textContent=d.fallback?"Mode AI tidak tersedia, ini contoh dari template sederhana.":"";
+}
+var TI=null,TH=[];
+var TCOL={kuning:"#ffe14d",putih:"#ffffff",hijau:"#7dffb0",merah:"#ff5a4d",biru:"#6cc4ff",oranye:"#ff9f45"};
+function hexOf(n){n=String(n||"").toLowerCase();for(var k in TCOL)if(n.indexOf(k)>=0)return TCOL[k];return "#ffe14d"}
+function thumbCard(){
+  TH=(D.thumbs||[]).slice(0,3);
+  var l=TH.map(function(x,i){return '<div class="row"><div style="flex:1"><div class="t">'+esc(x.text)+'</div><div class="m">'+esc(x.visual||"")+' · teks '+esc(x.color||"")+'</div></div><button class="s" onclick="tuse('+i+')">Pakai</button></div>'}).join("");
+  return '<div class="card"><h2>Thumbnail</h2>'+(l||'<div class="m">Belum ada ide thumbnail.</div>')+
+  '<label>Gambar latar (screenshot dari videomu)</label><input type="file" id="tf" accept="image/*" onchange="tload(this)">'+
+  '<label>Teks thumbnail</label><input id="tt" oninput="tdraw()">'+
+  '<div class="g3"><div><label>Format</label><select id="tr" onchange="tdraw()"><option value="h">Lebar 16:9</option><option value="v">Vertikal 9:16</option></select></div><div><label>Posisi</label><select id="tp2" onchange="tdraw()"><option value="t">Atas</option><option value="m">Tengah</option><option value="b">Bawah</option></select></div><div><label>Warna</label><select id="tcl" onchange="tdraw()"><option value="#ffe14d">Kuning</option><option value="#ffffff">Putih</option><option value="#7dffb0">Hijau</option><option value="#ff5a4d">Merah</option><option value="#6cc4ff">Biru</option><option value="#ff9f45">Oranye</option></select></div></div>'+
+  '<div class="cv"><canvas id="tc"></canvas></div><button class="btn" onclick="tmk()">Buat gambar untuk disimpan</button><div class="m" style="margin-top:8px">Setelah gambar muncul, tekan lama lalu simpan, atau ambil screenshot.</div><img id="to" alt="Thumbnail" style="display:none;max-width:100%;border-radius:8px;margin-top:10px"></div>';
+}
+function tinit(){if(TH.length)tuse(0);else tdraw()}
+function tuse(i){var x=TH[i];$("tt").value=x.text;$("tcl").value=hexOf(x.color);tdraw()}
+function tload(el){var f=el.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var im=new Image();im.onload=function(){TI=im;tdraw()};im.src=r.result};r.readAsDataURL(f)}
+function twrap(x,t,mw){var w=t.split(" "),l=[],c="";w.forEach(function(k){var tt=c?c+" "+k:k;if(x.measureText(tt).width>mw&&c){l.push(c);c=k}else c=tt});if(c)l.push(c);return l}
+function tdraw(){
+  var c=$("tc");if(!c)return;var x=c.getContext("2d"),v=$("tr").value=="v",W=v?1080:1280,H=v?1920:720;c.width=W;c.height=H;
+  if(TI){var s=Math.max(W/TI.width,H/TI.height),iw=TI.width*s,ih=TI.height*s;x.drawImage(TI,(W-iw)/2,(H-ih)/2,iw,ih)}
+  else{var g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,"#0b6fa4");g.addColorStop(1,"#12c2c2");x.fillStyle=g;x.fillRect(0,0,W,H)}
+  x.fillStyle="rgba(0,0,0,.3)";x.fillRect(0,0,W,H);
+  var t=($("tt").value||"").toUpperCase(),sz=v?110:104,mw=W*.9,L;
+  x.textAlign="center";x.textBaseline="top";x.lineJoin="round";
+  for(;;){x.font="900 "+sz+"px 'Arial Black',Impact,system-ui,sans-serif";L=twrap(x,t,mw);if(L.length<=3||sz<40)break;sz-=6}
+  var lh=sz*1.12,bh=L.length*lh,p=$("tp2").value,y=p=="t"?H*.07:p=="m"?(H-bh)/2:H*.93-bh;
+  L.forEach(function(l){x.lineWidth=sz*.2;x.strokeStyle="#000";x.strokeText(l,W/2,y);x.fillStyle=$("tcl").value;x.fillText(l,W/2,y);y+=lh});
+}
+function tmk(){var o=$("to");try{o.src=$("tc").toDataURL("image/jpeg",.92)}catch(e){return}o.style.display="block"}
+function render(){
+  var ts=D.titles.slice().sort(function(a,b){return (b.score||0)-(a.score||0)});
+  var h='<div class="card"><h2>Judul</h2>'+ts.map(function(x,i){
+    return '<div class="row">'+(x.score?'<div class="sc">'+esc(x.score)+'/10</div>':"")+'<div style="flex:1">'+(i==0&&x.score?'<div class="best">⭐ Rekomendasi terbaik</div>':"")+'<div class="t">'+esc(x.t)+'</div><div class="m">'+esc(x.why||"")+'</div></div><button class="s" onclick="cpy(this.dataset.v,this)" data-v="'+esc(x.t)+'">Salin</button></div>'}).join("")+'</div>';
+  h+='<div class="card"><div class="hd"><h2>Deskripsi</h2><button class="s" onclick="cpy(D.description,this)">Salin</button></div><div class="box">'+esc(D.description)+'</div></div>';
+  var hs=D.hashtags.map(function(t){return t.charAt(0)=="#"?t:"#"+t});
+  h+='<div class="card"><div class="hd"><h2>Hashtag</h2><button class="s" onclick="cpy(D.hashtags.map(function(t){return t.charAt(0)==\'#\'?t:\'#\'+t}).join(\' \'),this)">Salin semua</button></div><div class="tags">'+hs.map(function(t){return '<span class="tag">'+esc(t)+'</span>'}).join("")+'</div></div>';
+  $("out").innerHTML=h+thumbCard();tinit();
+}
+</script>
+</body>
+</html>
